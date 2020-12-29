@@ -380,14 +380,12 @@ def _to_struct_internal_rep(
     type_spec: computation_types.StructType,
     device: tf.config.LogicalDevice) -> structure.Struct:
   """Converts a python container to internal representation for TF executor."""
-  type_elem = structure.to_elements(type_spec)
-  value_elem = (structure.to_elements(structure.from_container(value)))
+  type_iterator = structure.iter_elements(type_spec)
+  value_struct = structure.from_container(value)
+  value_iterator = (structure.iter_elements(value_struct))
   result_elem = []
-  if len(type_elem) != len(value_elem):
-    raise TypeError('Expected a {}-element tuple, found {} elements.'.format(
-        len(type_elem), len(value_elem)))
   for (type_name, elem_type), (val_name,
-                               elem_val) in zip(type_elem, value_elem):
+                               elem_val) in zip(type_iterator, value_iterator):
     if type_name != val_name:
       raise TypeError(
           'Mismatching element names in type vs. value: {} vs. {}.'.format(
@@ -395,6 +393,11 @@ def _to_struct_internal_rep(
     elem_repr = to_representation_for_type(elem_val, tf_function_cache,
                                            elem_type, device)
     result_elem.append((type_name, elem_repr))
+  if any(True for _ in type_iterator) or any(True for _ in value_iterator):
+    raise TypeError('Mismatched number of elements between type spec and value '
+                    'in `to_representation_for_type`. Type spec has {} '
+                    'elements, value has {}.'.format(
+                        len(type_spec), len(value_struct)))
   return structure.Struct(result_elem)
 
 
@@ -664,10 +667,11 @@ class EagerTFExecutor(executor_base.Executor):
     Returns:
       An instance of `EagerValue` that represents the constructed tuple.
     """
-    elements = structure.to_elements(structure.from_container(elements))
+    elements_iterator = structure.iter_elements(
+        structure.from_container(elements))
     val_elements = []
     type_elements = []
-    for k, v in elements:
+    for k, v in elements_iterator:
       py_typecheck.check_type(v, EagerValue)
       val_elements.append((k, v.internal_representation))
       type_elements.append((k, v.type_signature))
