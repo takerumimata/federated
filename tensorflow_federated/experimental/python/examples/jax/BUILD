@@ -11,10 +11,20 @@ py_library(
     visibility = ["//tensorflow_federated/tools:__subpackages__"],
 )
 
-py_test(
-    name = "end_to_end_test",
-    srcs = ["end_to_end_test.py"],
-    python_version = "PY3",
+py_library(
+    name = "mnist",
+    srcs = ["mnist.py"],
     srcs_version = "PY3",
     deps = ["//tensorflow_federated"],
+)
+
+py_test(
+    name = "mnist_test",
+    srcs = ["mnist_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":mnist",
+        "//tensorflow_federated",
+    ],
 )
